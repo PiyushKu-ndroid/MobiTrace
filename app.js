@@ -369,18 +369,31 @@ function startListeningBus(busId){
   currentListeningBus = busId;
   const locRef = db.ref("busesLocations/" + busId + "/location");
   locRef.on('value', (snap) => {
-    const coords = snap.val();
-    if (!coords) {
-      trackStatus.innerText = "No live location shared currently";
-      return;
-    }
-    const lat = coords.lat;
-    const lng = coords.lng;
-    busMarker.setLatLng([lat,lng]);
-    if (followBus) map.panTo([lat,lng]);
-    trackStatus.innerText = `Live: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-    computeAndShowETA();
-  });
+  const coords = snap.val();
+  if (!coords) {
+    trackStatus.innerText = "No live location shared currently";
+    return;
+  }
+  const lat = coords.lat;
+  const lng = coords.lng;
+
+  // Smoothly move bus marker
+  busMarker.setLatLng([lat, lng], { animate: true, duration: 1.5 });
+
+  // Optional: add pulsing circle around bus
+  if (window.busPulseCircle) map.removeLayer(window.busPulseCircle); // remove previous
+  window.busPulseCircle = L.circle([lat, lng], {
+    radius: 50,
+    color: '#22c55e',
+    fillColor: '#22c55e',
+    fillOpacity: 0.3
+  }).addTo(map);
+
+  if (followBus) map.panTo([lat, lng]);
+  trackStatus.innerText = `Live: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  computeAndShowETA();
+});
+
 }
 
 /* compute ETA from bus to user stop (if set) using avg speed */
