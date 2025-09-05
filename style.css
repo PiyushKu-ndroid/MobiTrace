@@ -65,7 +65,7 @@ button:hover {
 }
 * { box-sizing: border-box; }
 body {
-  background-image: url("marc-olivier-jodoin-NqOInJ-ttqM-unsplash.jpg");
+  background-image: url("pics/marc-olivier-jodoin-NqOInJ-ttqM-unsplash.jpg");
   background-size: cover;
 
   margin:0;
@@ -192,3 +192,4 @@ footer { margin-top:14px; text-align:center; color:var(--muted); font-size:13px;
 
 
 }
+
