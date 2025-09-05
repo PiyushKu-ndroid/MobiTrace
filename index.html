@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Rural Bus Tracker — Demo</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+  <!-- App styles -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Splash -->
+  <div id="splash">
+    <img id="logo" src="https://cdn-icons-png.flaticon.com/512/61/61231.png" alt="logo">
+    <h1>Rural Bus Tracker</h1>
+  </div>
+
+  <!-- Main container -->
+  <div id="app" class="hidden">
+
+    <!-- Header / Home -->
+    <header>
+      <div class="brand">🚌 Rural Bus Tracker</div>
+      <nav>
+        <button id="btnHome" class="nav-btn active">Home</button>
+        <button id="btnAdmin" class="nav-btn">Admin</button>
+        <button id="btnDriver" class="nav-btn">Driver</button>
+        <button id="btnTrack" class="nav-btn">Track</button>
+      </nav>
+    </header>
+
+    <main>
+      <!-- Home -->
+      <section id="homeView" class="view">
+        <h2>Welcome! choose a role</h2>
+        <div class="bigButtons">
+          <button class="big" id="gotoDriver">Driver</button>
+          <button class="big" id="gotoTrack">Track (Passenger)</button>
+          <button class="big" id="gotoAdmin">Admin</button>
+        </div>
+        <p class="muted">Demo: Admin creates a bus and QR. Driver scans QR and starts sharing location. Passenger tracks live on map.</p>
+      </section>
+
+      <!-- Admin -->
+      <section id="adminView" class="view hidden">
+        <h2>Admin — Create Bus & QR</h2>
+
+        <div class="card">
+          <label>Bus ID (unique)</label>
+          <input id="adminBusId" placeholder="e.g. bus12" />
+          <label>Display name</label>
+          <input id="adminBusName" placeholder="e.g. Village A → Town Center" />
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button id="createBusBtn">Create Bus & Generate QR</button>
+            <button id="refreshBusesBtn">Refresh bus list</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>QR Code</h3>
+          <div id="qrcode" style="padding:8px;background:#fff;border-radius:8px;"></div>
+          <div id="qrcodeLabel" class="muted" style="margin-top:8px"></div>
+        </div>
+
+        <div class="card">
+          <h3>Existing buses in project</h3>
+          <ul id="adminBusList"></ul>
+        </div>
+      </section>
+
+      <!-- Driver -->
+      <section id="driverView" class="view hidden">
+        <h2>Driver — Scan QR or enter Bus ID</h2>
+
+        <div class="card row">
+          <div>
+            <label>Bus ID</label>
+            <input id="driverBusId" placeholder="Scan QR or enter bus id">
+            <div style="margin-top:8px;">
+              <button id="startScanBtn">Scan QR (Camera)</button>
+              <button id="stopScanBtn" disabled>Stop Scan</button>
+            </div>
+          </div>
+
+          <div>
+            <label>Simulate (desktop)</label>
+            <select id="simulateRouteSelect">
+              <option value="none">No simulation (use real GPS)</option>
+              <option value="demo1">Demo route 1</option>
+            </select>
+            <div style="margin-top:8px;">
+              <button id="startShareBtn">Start Sharing</button>
+              <button id="stopShareBtn" disabled>Stop Sharing</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Scanner preview</h3>
+          <video id="video" autoplay muted playsinline style="width:100%;border-radius:8px"></video>
+          <canvas id="qrCanvas" class="hidden"></canvas>
+          <div id="driverStatus" class="muted">Status: idle</div>
+        </div>
+      </section>
+
+      <!-- Track / Passenger -->
+      <section id="trackView" class="view hidden">
+        <h2>Passenger — Live Tracking</h2>
+
+        <div class="card row">
+          <div style="min-width:260px">
+            <label>Choose Bus</label>
+            <select id="busSelect"></select>
+
+            <label style="margin-top:8px">Follow bus</label>
+            <input id="followCheckbox" type="checkbox" checked />
+
+            <label style="margin-top:8px">Set your stop (click on map)</label>
+            <button id="setStopBtn">Enable Set Stop</button>
+
+            <div class="small muted" id="etaBox">ETA: --</div>
+            <div class="small muted" id="trackStatus">Status: waiting</div>
+          </div>
+
+          <div style="flex:1">
+            <div id="map" style="height:430px;border-radius:8px"></div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <footer>
+      <small class="muted">Prototype — Demo only. Replace Firebase config in <code>app.js</code>.</small>
+    </footer>
+  </div>
+
+  <!-- Libraries -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <!-- Firebase (compat for simplicity) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <!-- App logic -->
+  <script src="app.js"></script>
+</body>
+</html>
