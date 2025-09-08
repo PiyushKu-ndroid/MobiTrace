@@ -6,7 +6,7 @@ body::before {
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, 0.189); /* dimming */
-  z-index: 0;
+  z-index: -1;
 }
 body { position: relative; }
 header, nav { z-index: 1; position: relative; }
@@ -197,5 +197,6 @@ footer { margin-top:14px; text-align:center; color:var(--muted); font-size:13px;
 
 
 }
+
 
 
