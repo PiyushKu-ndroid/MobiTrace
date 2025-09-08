@@ -6,7 +6,7 @@ body::before {
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, 0.189); /* dimming */
-  z-index: -1;
+  z-index: 0;
 }
 body { position: relative; }
 header, nav { z-index: 1; position: relative; }
@@ -63,7 +63,6 @@ button:hover {
   --accent: #d0e0e3;
   --primary: #2563eb;
 }
-
 * { box-sizing: border-box; }
 body {
   background-image: url("pics/marc-olivier-jodoin-NqOInJ-ttqM-unsplash.jpg");
@@ -189,14 +188,10 @@ footer { margin-top:14px; text-align:center; color:var(--muted); font-size:13px;
   #app{ margin:8px; }
   .bigButtons { flex-direction: column; }
   main { padding: 8px; }
-  #map {
-  height: 100vh;   /* full screen height */
-  width: 100%;
-  z-index: 1;      /* make sure it’s not hidden behind overlays */
-}
+  #map { 
+    height: 300px;
+    width: 500px;
+   }
 
 
 }
-
-
-
