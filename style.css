@@ -63,6 +63,8 @@ button:hover {
   --accent: #d0e0e3;
   --primary: #2563eb;
 }
+html, body, #app, main {
+  height: 100%;
 * { box-sizing: border-box; }
 body {
   background-image: url("pics/marc-olivier-jodoin-NqOInJ-ttqM-unsplash.jpg");
@@ -196,3 +198,4 @@ footer { margin-top:14px; text-align:center; color:var(--muted); font-size:13px;
 
 
 }
+
