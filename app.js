@@ -59,14 +59,20 @@ function showView(name){
 }
 
 /* Splash -> App */
-window.addEventListener("load", () => {
+  window.addEventListener("load", () => {
   setTimeout(() => {
     splash.classList.add("hidden");  // fade out splash
     app.classList.remove("hidden");  // show main app
     showView("home");                // default view
-  }, 2000); // 2 seconds
-});
 
+    // 🔥 Fix map resize issue on mobile
+    setTimeout(() => {
+      if (window.myMap) {
+        window.myMap.invalidateSize();
+      }
+    }, 500); // wait a bit after showing app
+  }, 2000); // splash duration
+});
 
 /* header buttons */
 document.getElementById("btnHome").addEventListener("click", ()=> showView("home"));
@@ -437,3 +443,4 @@ window.addEventListener("beforeunload", () => {
   stopScanner();
   stopSharing();
 });
+
