@@ -67,8 +67,8 @@ function showView(name){
 
     // 🔥 Fix map resize issue on mobile
     setTimeout(() => {
-      if (window.myMap) {
-        window.myMap.invalidateSize();
+      if (window.Map) {
+        window.Map.invalidateSize();
       }
     }, 500); // wait a bit after showing app
   }, 2000); // splash duration
@@ -443,4 +443,5 @@ window.addEventListener("beforeunload", () => {
   stopScanner();
   stopSharing();
 });
+
 
