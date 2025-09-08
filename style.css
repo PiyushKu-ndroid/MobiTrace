@@ -190,9 +190,10 @@ footer { margin-top:14px; text-align:center; color:var(--muted); font-size:13px;
   main { padding: 8px; }
   #map { 
     height: 300px;
-    width: 500px;
+    width: 100%;
    }
 
 
 }
+
 
