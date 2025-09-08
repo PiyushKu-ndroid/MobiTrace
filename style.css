@@ -65,14 +65,14 @@ button:hover {
 }
 * { box-sizing: border-box; }
 body {
-  background: url("pics/marc-olivier-jodoin-NqOInJ-ttqM-unsplash.jpg") no-repeat center center fixed;
+  background-image: url("pics/marc-olivier-jodoin-NqOInJ-ttqM-unsplash.jpg");
   background-size: cover;
-  margin: 0;
+
+  margin:0;
   font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
   color: #e6eef8;
-  min-height: 100vh;
+  min-height:100vh;
 }
-
 #splash img {
   animation: splashBounce 1.5s ease-in-out infinite;
   scale: 120%;
@@ -190,10 +190,8 @@ footer { margin-top:14px; text-align:center; color:var(--muted); font-size:13px;
   main { padding: 8px; }
   #map { 
     height: 300px;
-    width: 100%;
+    width: 500px;
    }
 
 
 }
-
-
