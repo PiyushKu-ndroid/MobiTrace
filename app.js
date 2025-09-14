@@ -58,40 +58,35 @@
     views[name].classList.remove("hidden");
   }
 
-/* Splash -> App */
-window.addEventListener("load", () => {
-    setTimeout(() => {
-        splash.classList.add("hidden");  // fade out splash
-        app.classList.remove("hidden");  // show main app
-
-        // Check for URL parameters to determine the initial view
-        const urlParams = new URLSearchParams(window.location.search);
+   const urlParams = new URLSearchParams(window.location.search);
         const viewName = urlParams.get('view');
         const busIdFromUrl = urlParams.get('busId');
 
         if (viewName) {
             showView(viewName);
 
-            // If a busId is also in the URL, pre-fill it for the driver.
             if (viewName === "driver" && busIdFromUrl) {
-                // Since this runs after the view is shown, make sure the element exists
-                if (document.getElementById('driverBusId')) {
-                    document.getElementById('driverBusId').value = busIdFromUrl;
-                    document.getElementById('driverStatusDiv').innerText = `Status: Bus ID "${busIdFromUrl}" pre-filled from QR code.`;
-                }
+                driverBusIdInput.value = busIdFromUrl;
+                driverStatusDiv.innerText = `Status: Bus ID "${busIdFromUrl}" pre-filled from QR code.`;
             }
         } else {
-            // If no view parameter is present, show the default home view.
+            // Default to the home view if no URL parameter is provided.
             showView("home");
         }
+  /* Splash -> App */
+  window.addEventListener("load", () => {
+  setTimeout(() => {
+    splash.classList.add("hidden");  // fade out splash
+    app.classList.remove("hidden");  // show main app
+             // default view
 
-        // 🔥 Fix map resize issue on mobile
-        setTimeout(() => {
-            if (window.myMap) {
-                window.myMap.invalidateSize();
-            }
-        }, 500); // wait a bit after showing app
-    }, 2000); // splash duration
+    // 🔥 Fix map resize issue on mobile
+    setTimeout(() => {
+      if (window.myMap) {
+        window.myMap.invalidateSize();
+      }
+    }, 500); // wait a bit after showing app
+  }, 2000); // splash duration
 });
 
 
@@ -115,7 +110,7 @@ window.addEventListener("load", () => {
   const adminBusList = document.getElementById("adminBusList");
   const refreshBusesBtn = document.getElementById("refreshBusesBtn");
 
- createBusBtn.addEventListener("click", async () => {
+  createBusBtn.addEventListener("click", async () => {
     const id = (adminBusIdInput.value || "").trim();
     const name = (adminBusNameInput.value || "").trim();
 
@@ -142,7 +137,7 @@ window.addEventListener("load", () => {
     adminBusIdInput.value = "";
     adminBusNameInput.value = "";
     refreshBuses();
-  });
+});
 
   refreshBusesBtn.addEventListener("click", refreshBuses);
 
@@ -472,9 +467,4 @@ window.addEventListener("load", () => {
   window.addEventListener("beforeunload", () => {
     stopScanner();
     stopSharing();
-
   });
-
-
-
-
