@@ -81,7 +81,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setTimeout(() => {
     splash.classList.add("hidden");  // fade out splash
     app.classList.remove("hidden");  // show main app
-    showView("home");                // default view
+                // default view
 
     // 🔥 Fix map resize issue on mobile
     setTimeout(() => {
@@ -472,4 +472,5 @@ document.addEventListener("DOMContentLoaded", () => {
     stopSharing();
 
   });
+
 
