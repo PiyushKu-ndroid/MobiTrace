@@ -57,39 +57,41 @@
     for (const k in views) views[k].classList.add("hidden");
     views[name].classList.remove("hidden");
   }
-/* Handle URL parameters for direct linking (e.g., from a QR code scan) */
-document.addEventListener("DOMContentLoaded", () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const viewName = urlParams.get('view');
-    const busIdFromUrl = urlParams.get('busId');
 
-    if (viewName) {
-        showView(viewName);
-
-        // If a busId is also in the URL, pre-fill it for the driver.
-        if (viewName === "driver" && busIdFromUrl) {
-            driverBusIdInput.value = busIdFromUrl;
-            driverStatusDiv.innerText = `Status: Bus ID "${busIdFromUrl}" pre-filled from QR code.`;
-        }
-    } else {
-        // If no view parameter is present, show the default home view.
-        showView("home");
-    }
-
-  /* Splash -> App */
-  window.addEventListener("load", () => {
-  setTimeout(() => {
-    splash.classList.add("hidden");  // fade out splash
-    app.classList.remove("hidden");  // show main app
-                // default view
-
-    // 🔥 Fix map resize issue on mobile
+/* Splash -> App */
+window.addEventListener("load", () => {
     setTimeout(() => {
-      if (window.myMap) {
-        window.myMap.invalidateSize();
-      }
-    }, 500); // wait a bit after showing app
-  }, 2000); // splash duration
+        splash.classList.add("hidden");  // fade out splash
+        app.classList.remove("hidden");  // show main app
+
+        // Check for URL parameters to determine the initial view
+        const urlParams = new URLSearchParams(window.location.search);
+        const viewName = urlParams.get('view');
+        const busIdFromUrl = urlParams.get('busId');
+
+        if (viewName) {
+            showView(viewName);
+
+            // If a busId is also in the URL, pre-fill it for the driver.
+            if (viewName === "driver" && busIdFromUrl) {
+                // Since this runs after the view is shown, make sure the element exists
+                if (document.getElementById('driverBusId')) {
+                    document.getElementById('driverBusId').value = busIdFromUrl;
+                    document.getElementById('driverStatusDiv').innerText = `Status: Bus ID "${busIdFromUrl}" pre-filled from QR code.`;
+                }
+            }
+        } else {
+            // If no view parameter is present, show the default home view.
+            showView("home");
+        }
+
+        // 🔥 Fix map resize issue on mobile
+        setTimeout(() => {
+            if (window.myMap) {
+                window.myMap.invalidateSize();
+            }
+        }, 500); // wait a bit after showing app
+    }, 2000); // splash duration
 });
 
 
@@ -472,6 +474,7 @@ document.addEventListener("DOMContentLoaded", () => {
     stopSharing();
 
   });
+
 
 
 
