@@ -7,6 +7,7 @@
 
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
 
   <!-- App styles -->
   <link rel="stylesheet" href="style.css" />
@@ -61,20 +62,29 @@
 
         <div class="card">
           <h3>QR Code</h3>
-           <div id="qrcode" style="padding:8px;border-radius:8px;"></div>
-          <div id="qrcodeLabel" class="muted" style="margin-top:8px"></div> 
+          <div id="qrcode" style="padding:8px;border-radius:8px;"></div>
+          <div id="qrcodeLabel" class="muted" style="margin-top:8px"></div>
+          <button id="downloadQR">Download QR</button>
         </div> 
 
         <div class="card">
           <h3>Existing buses in project</h3>
           <ul id="adminBusList"></ul>
         </div>
+
+        <!-- Admin Map Card -->
+        <div class="card">
+          <h3>Pin Bus Route on Map</h3>
+          <label>Select Bus</label>
+          <select id="adminBusSelect"></select>
+          <div id="adminMap" style="height:400px;border-radius:8px;margin-top:10px"></div>
+          <button id="resetRouteBtn" style="margin-top:8px;">Reset Route</button>
+        </div>
       </section>
 
       <!-- Driver -->
       <section id="driverView" class="view hidden">
         <h2>Driver — Scan QR or enter Bus ID</h2>
-
         <div class="card row">
           <div>
             <label>Bus ID</label>
@@ -84,7 +94,6 @@
               <button id="stopScanBtn" disabled>Stop Scan</button>
             </div>
           </div>
-
           <div>
             <label>Simulate (desktop)</label>
             <select id="simulateRouteSelect">
@@ -97,7 +106,6 @@
             </div>
           </div>
         </div>
-
         <div class="card">
           <h3>Scanner preview</h3>
           <video id="video" autoplay muted playsinline style="width:100%;border-radius:8px"></video>
@@ -109,28 +117,22 @@
       <!-- Track / Passenger -->
       <section id="trackView" class="view hidden">
         <h2>Passenger — Live Tracking</h2>
-
         <div class="card row">
           <div style="min-width:260px">
             <label>Choose Bus</label>
             <select id="busSelect"></select>
-
             <label style="margin-top:8px">Follow bus</label>
             <input id="followCheckbox" type="checkbox" checked />
-
             <label style="margin-top:8px">Set your stop (click on map)</label>
             <button id="setStopBtn">Enable Set Stop</button>
-
             <div class="small muted" id="etaBox">ETA: --</div>
             <div class="small muted" id="trackStatus">Status: waiting</div>
           </div>
-
           <div style="flex:1">
             <div id="map" style="height:430px;border-radius:8px"></div>
           </div>
         </div>
       </section>
-
     </main>
 
     <footer>
@@ -140,10 +142,9 @@
 
   <!-- Libraries -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
-  <!-- Firebase (compat for simplicity) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
