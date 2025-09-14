@@ -24,6 +24,7 @@ let scanning = false;
 let scanInterval = null;
 let watchId = null;
 let simulateInterval = null;
+let lastCreatedBusId = null; // global variable
 
 /* UI elements */
 const splash = document.getElementById("splash");
@@ -114,13 +115,31 @@ createBusBtn.addEventListener("click", async () => {
         name: name || id,
         createdAt: firebase.database.ServerValue.TIMESTAMP
     });
+
     qrcodeDiv.innerHTML = "";
     new QRCode(qrcodeDiv, { text: qrCodeUrl, width: 160, height: 160 });
     qrcodeLabel.innerText = `QR for bus id: ${id}`;
+
+    lastCreatedBusId = id;  // save for download button ✅
+
     adminBusIdInput.value = "";
     adminBusNameInput.value = "";
     refreshBuses();
 });
+
+// After QR generated
+const downloadBtn = document.getElementById("downloadQR");
+downloadBtn.onclick = () => {
+    const canvas = qrcodeDiv.querySelector("canvas");
+    if (!canvas) return alert("QR not ready yet.");
+    if (!lastCreatedBusId) return alert("No QR generated yet.");
+
+    const link = document.createElement("a");
+    link.href = canvas.toDataURL("image/png");
+    link.download = `${lastCreatedBusId}_qr.png`;
+    link.click();
+};
+
 
 refreshBusesBtn.addEventListener("click", refreshBuses);
 
@@ -136,6 +155,61 @@ async function refreshBuses(){
     }
     populateBusSelect();
 }
+
+/* ----------------- ADMIN: Pin route on map ----------------- */
+let adminMap, adminMarkers = [], adminRouteControl = null;
+
+function initAdminMap(){
+    if (adminMap) return;
+
+    adminMap = L.map('adminMap').setView([22.5795, 88.3720], 13); // Adjust default view
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(adminMap);
+
+    adminMap.on('click', async (e) => {
+        if (adminMarkers.length >= 2) return; // Only two points allowed
+        const marker = L.marker(e.latlng, { draggable: true }).addTo(adminMap);
+        adminMarkers.push(marker);
+
+        marker.on('dragend', () => drawAdminRoute());
+
+        if (adminMarkers.length === 2) {
+            drawAdminRoute();
+        }
+    });
+
+    document.getElementById("resetRouteBtn").addEventListener("click", () => {
+        adminMarkers.forEach(m => adminMap.removeLayer(m));
+        adminMarkers = [];
+        if (adminRouteControl) adminMap.removeControl(adminRouteControl);
+        adminRouteControl = null;
+    });
+}
+
+function drawAdminRoute(){
+    if (adminRouteControl) adminMap.removeControl(adminRouteControl);
+    if (adminMarkers.length < 2) return;
+
+    adminRouteControl = L.Routing.control({
+        waypoints: adminMarkers.map(m => m.getLatLng()),
+        routeWhileDragging: true
+    }).addTo(adminMap);
+
+    // Optional: Save route to Firebase
+    const routeCoords = adminMarkers.map(m => {
+        const ll = m.getLatLng();
+        return { lat: ll.lat, lng: ll.lng };
+    });
+    console.log("Admin Route Coordinates:", routeCoords);
+    // You can save like:
+    // db.ref("busesRoutes/" + busId).set(routeCoords);
+}
+
+/* Initialize admin map when admin view is loaded */
+document.getElementById("btnAdmin").addEventListener("click", initAdminMap);
+document.getElementById("gotoAdmin").addEventListener("click", initAdminMap);
+
 
 /* ----------------- DRIVER: QR scan + start/stop sharing ----------------- */
 const startScanBtn = document.getElementById("startScanBtn");
