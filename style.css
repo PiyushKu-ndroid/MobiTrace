@@ -54,6 +54,18 @@ button:hover {
   color: #fff;
   backdrop-filter: blur(6px);
 }
+/* Change background of the directions panel */
+.leaflet-routing-container {
+    background-color: #f0f0f0 !important; /* Replace with your desired color */
+    color: #000; /* Text color */
+    border-radius: 8px;
+    padding: 8px;
+}
+
+/* Optional: change link/button colors inside */
+.leaflet-routing-container a {
+    color: #1e3a8a;
+}
 
 /* Clean modern dark UI for the prototype */
 :root {
