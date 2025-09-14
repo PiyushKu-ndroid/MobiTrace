@@ -75,7 +75,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // If no view parameter is present, show the default home view.
         showView("home");
     }
-});
+
   /* Splash -> App */
   window.addEventListener("load", () => {
   setTimeout(() => {
@@ -472,5 +472,6 @@ document.addEventListener("DOMContentLoaded", () => {
     stopSharing();
 
   });
+
 
 
