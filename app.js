@@ -95,20 +95,29 @@
   const adminBusList = document.getElementById("adminBusList");
   const refreshBusesBtn = document.getElementById("refreshBusesBtn");
 
-  createBusBtn.addEventListener("click", async () => {
+ createBusBtn.addEventListener("click", async () => {
     const id = (adminBusIdInput.value || "").trim();
     const name = (adminBusNameInput.value || "").trim();
 
     if (!id) return alert("Please enter a unique Bus ID (e.g. bus12)");
+    
+    // Step 1: Define the base URL of your website's entry point.
+    // Replace 'http://127.0.0.1:5500/index.html' with your live domain when deployed.
+    const baseUrl = "https://mobi-trace.vercel.app/"; 
+
+    // Step 2: Construct the full URL with the busId and a 'view' parameter.
+    // The 'view=driver' will tell your app.js to show the driver page on load.
+    const qrCodeUrl = `${baseUrl}?view=driver&busId=${encodeURIComponent(id)}`;
+
     // write metadata to database
     await db.ref("busesMeta/" + id).set({
       name: name || id,
       createdAt: firebase.database.ServerValue.TIMESTAMP
     });
 
-    // generate QR containing the bus id
+    // Step 3: Generate the QR code with the complete, scannable URL.
     qrcodeDiv.innerHTML = "";
-    new QRCode(qrcodeDiv, { text: id, width: 160, height: 160 });
+    new QRCode(qrcodeDiv, { text: qrCodeUrl, width: 160, height: 160 });
     qrcodeLabel.innerText = `QR for bus id: ${id}`;
     adminBusIdInput.value = "";
     adminBusNameInput.value = "";
@@ -443,4 +452,5 @@
   window.addEventListener("beforeunload", () => {
     stopScanner();
     stopSharing();
+
   });
