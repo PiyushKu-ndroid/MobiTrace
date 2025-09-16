@@ -5,8 +5,8 @@ const urlsToCache = [
   "/app.js",
   "/pweasy.js",
   "/style.css",
-  "/icons/icon-192.png",
-  "/icons/icon-512.png"
+  "/bus-icon (192).png",
+  "/bus-icon (512).png"
 ];
 
 // Install: cache all files
@@ -27,3 +27,4 @@ self.addEventListener("fetch", (event) => {
     caches.match(event.request).then((response) => response || fetch(event.request))
   );
 });
+
