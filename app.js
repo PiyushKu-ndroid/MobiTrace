@@ -15,7 +15,8 @@ const firebaseConfig = {
     measurementId: "G-EB04LCLX7J"
 };
 firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+const db = firebase.firestore();
+db.enablePersistence().catch(err => console.log("Persistence error", err));
 /* ----------------------------------------------------------------- */
 
 /* Basic app state */
@@ -52,36 +53,45 @@ function showView(name){
 
 /* Splash -> App: ALL STARTUP LOGIC CONSOLIDATED HERE */
 window.addEventListener("load", () => {
-    // Correctly handle URL parameters here, AFTER the page loads
-    const urlParams = new URLSearchParams(window.location.search);
-    const viewName = urlParams.get('view');
-    const busIdFromUrl = urlParams.get('busId');
+    try {
+        // Handle URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const viewName = urlParams.get('view');
+        const busIdFromUrl = urlParams.get('busId');
 
-    // A deliberate delay to ensure a smooth transition and prevent looping
-    setTimeout(() => {
+        // Delay to allow smooth transition
+        setTimeout(() => {
+            // Always hide splash even if something breaks
+            splash.classList.add("hidden");
+            app.classList.remove("hidden");
+
+            if (viewName) {
+                showView(viewName);
+                if (viewName === "driver" && busIdFromUrl) {
+                    if (driverBusIdInput && driverStatusDiv) {
+                        driverBusIdInput.value = busIdFromUrl;
+                        driverStatusDiv.innerText = `Status: Bus ID "${busIdFromUrl}" pre-filled from QR code.`;
+                    }
+                }
+            } else {
+                showView("home");
+            }
+
+            // Fix map resize issue on mobile
+            setTimeout(() => {
+                if (window.myMap) window.myMap.invalidateSize();
+            }, 500);
+
+        }, 500);
+
+    } catch (err) {
+        console.error("Error during load:", err);
+        // Make sure splash always hides
         splash.classList.add("hidden");
         app.classList.remove("hidden");
-        
-        if (viewName) {
-            showView(viewName);
-            if (viewName === "driver" && busIdFromUrl) {
-                if (driverBusIdInput && driverStatusDiv) {
-                    driverBusIdInput.value = busIdFromUrl;
-                    driverStatusDiv.innerText = `Status: Bus ID "${busIdFromUrl}" pre-filled from QR code.`;
-                }
-            }
-        } else {
-            showView("home");
-        }
-
-        // Fix map resize issue on mobile
-        setTimeout(() => {
-            if (window.myMap) {
-                window.myMap.invalidateSize();
-            }
-        }, 500);
-    }, 500); // Wait 500ms
+    }
 });
+
 
 /* header buttons */
 document.getElementById("btnHome").addEventListener("click", () => showView("home"));
@@ -111,9 +121,9 @@ createBusBtn.addEventListener("click", async () => {
     const baseUrl = "https://mobi-trace.vercel.app/"; 
     const qrCodeUrl = `${baseUrl}?view=driver&busId=${encodeURIComponent(id)}`;
 
-    await db.ref("busesMeta/" + id).set({
+    await db.collection("busesMeta").doc(id).set({
         name: name || id,
-        createdAt: firebase.database.ServerValue.TIMESTAMP
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
     qrcodeDiv.innerHTML = "";
@@ -143,16 +153,19 @@ downloadBtn.onclick = () => {
 
 refreshBusesBtn.addEventListener("click", refreshBuses);
 
-async function refreshBuses(){
+async function refreshBuses() {
     adminBusList.innerHTML = "<li class='muted'>Loading…</li>";
-    const snapshot = await db.ref("busesMeta").once("value");
-    const data = snapshot.val() || {};
+
+    const snapshot = await db.collection("busesMeta").get();
     adminBusList.innerHTML = "";
-    for (const id of Object.keys(data)) {
+
+    snapshot.forEach(doc => {
+        const data = doc.data();
         const li = document.createElement("li");
-        li.innerText = `${id} — ${data[id].name || ""}`;
+        li.innerText = `${doc.id} — ${data.name || ""}`;
         adminBusList.appendChild(li);
-    }
+    });
+
     populateBusSelect();
 }
 
@@ -275,10 +288,14 @@ stopShareBtn.addEventListener("click", stopSharing);
 async function startSharing(){
     const busId = (driverBusIdInput.value || "").trim();
     if (!busId) return alert("Please scan QR or enter Bus ID first.");
-    await db.ref("busesLocations/" + busId + "/meta").set({
-        sharing: true,
-        updatedAt: firebase.database.ServerValue.TIMESTAMP
-    });
+
+    // Initialize PWEasy for this driver
+    initDriverPWEasy(busId);
+
+    // Firestore meta update
+    await db.collection("busesLocations").doc(busId)
+        .set({ sharing: true, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+
     const sim = simulateRouteSelect.value;
     if (sim && sim !== "none") {
         startSimulateRoute(busId);
@@ -287,48 +304,66 @@ async function startSharing(){
         stopShareBtn.disabled = false;
         return;
     }
+
     if (!("geolocation" in navigator)) {
         alert("Geolocation not available in this browser. Use simulation.");
         return;
     }
+
     driverStatusDiv.innerText = "Status: waiting for location permission…";
-    watchId = navigator.geolocation.watchPosition(async (pos) => {
+    watchId = navigator.geolocation.watchPosition((pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
-        await db.ref("busesLocations/" + busId + "/location").set({
-            lat, lng, ts: firebase.database.ServerValue.TIMESTAMP
-        });
+
+        // Firestore update
+        db.collection("busesLocations").doc(busId)
+            .collection("location").doc("current")
+            .set({ lat, lng, ts: firebase.firestore.FieldValue.serverTimestamp() });
+
+        // PWEasy instant broadcast
+        sendDriverLocation(busId, lat, lng);
+
         driverStatusDiv.innerText = `Status: sharing (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
     }, (err) => {
         console.warn("geolocation error", err);
         driverStatusDiv.innerText = "Status: geolocation error - " + (err.message || err.code);
     }, { enableHighAccuracy:true, maximumAge:1000, timeout:10000 });
+
     startShareBtn.disabled = true;
-    stopShareBtn.disabled = true;
+    stopShareBtn.disabled = false;
 }
 
-function stopSharing(){
+
+
+function stopSharing() {
     const busId = (driverBusIdInput.value || "").trim();
-    if (!busId) {
-        driverStatusDiv.innerText = "Status: stopped";
-    } else {
-        db.ref("busesLocations/" + busId + "/meta").set({sharing:false, updatedAt: firebase.database.ServerValue.TIMESTAMP});
-        db.ref("busesLocations/" + busId + "/location").remove().catch(()=>{});
-        driverStatusDiv.innerText = "Status: stopped";
+    if (busId) {
+        db.collection("busesLocations").doc(busId).collection("meta").doc("info").set({
+            sharing: false,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        db.collection("busesLocations").doc(busId).collection("location").doc("current").delete().catch(()=>{});
     }
+
+    driverStatusDiv.innerText = "Status: stopped";
+
     if (watchId !== null) {
         navigator.geolocation.clearWatch(watchId);
         watchId = null;
     }
+
     if (simulateInterval) {
         clearInterval(simulateInterval);
         simulateInterval = null;
     }
+
     startShareBtn.disabled = false;
     stopShareBtn.disabled = true;
 }
 
-function startSimulateRoute(busId){
+
+function startSimulateRoute(busId) {
     const route = [
         [22.5726, 88.3639],
         [22.5760, 88.3670],
@@ -337,12 +372,23 @@ function startSimulateRoute(busId){
         [22.5890, 88.3820],
         [22.5930, 88.3880]
     ];
+
     let i = 0;
-    db.ref("busesLocations/" + busId + "/meta").set({sharing:true, updatedAt: firebase.database.ServerValue.TIMESTAMP});
+
+    db.collection("busesLocations").doc(busId).collection("meta").doc("info").set({
+        sharing: true,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
     simulateInterval = setInterval(() => {
-        const [lat,lng] = route[i];
-        db.ref("busesLocations/" + busId + "/location").set({lat,lng,ts:firebase.database.ServerValue.TIMESTAMP});
-        i++; if (i >= route.length) i = 0;
+        const [lat, lng] = route[i];
+        db.collection("busesLocations").doc(busId).collection("location").doc("current").set({
+            lat, 
+            lng, 
+            ts: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        i++;
+        if (i >= route.length) i = 0;
     }, 1800);
 }
 
@@ -391,22 +437,26 @@ function initMap(){
     populateBusSelect();
 }
 
-async function populateBusSelect(){
+async function populateBusSelect() {
     busSelect.innerHTML = "<option>Loading…</option>";
-    const snap = await db.ref("busesMeta").once("value");
-    const data = snap.val() || {};
+
+    const snapshot = await db.collection("busesMeta").get();
     busSelect.innerHTML = "";
+
     const defaultOpt = document.createElement("option");
     defaultOpt.value = "";
-    defaultOpt.innerText = data ? "Select bus to track" : "No buses available";
+    defaultOpt.innerText = snapshot.empty ? "No buses available" : "Select bus to track";
     busSelect.appendChild(defaultOpt);
-    for (const id of Object.keys(data)) {
+
+    snapshot.forEach(doc => {
+        const data = doc.data();
         const opt = document.createElement("option");
-        opt.value = id;
-        opt.innerText = `${id} — ${data[id].name || ""}`;
+        opt.value = doc.id;
+        opt.innerText = `${doc.id} — ${data.name || ""}`;
         busSelect.appendChild(opt);
-    }
+    });
 }
+
 
 busSelect.addEventListener("change", (e) => {
     const id = e.target.value;
@@ -416,32 +466,67 @@ busSelect.addEventListener("change", (e) => {
 });
 
 let currentListeningBus = null;
-function startListeningBus(busId){
+let currentUnsubscribe = null;
+
+function startListeningBus(busId) {
     if (!busId) return;
-    if (currentListeningBus) db.ref("busesLocations/" + currentListeningBus + "/location").off();
-    currentListeningBus = busId;
-    const locRef = db.ref("busesLocations/" + busId + "/location");
-    locRef.on('value', (snap) => {
-    const coords = snap.val();
-    if (!coords) {
-        trackStatus.innerText = "No live location shared currently";
-        return;
+
+    // Stop previous Firestore listener
+    if (currentUnsubscribe) {
+        currentUnsubscribe();
+        currentUnsubscribe = null;
     }
-    const lat = coords.lat;
-    const lng = coords.lng;
-    busMarker.setLatLng([lat, lng], { animate: true, duration: 1.5 });
-    if (window.busPulseCircle) map.removeLayer(window.busPulseCircle);
-    window.busPulseCircle = L.circle([lat, lng], {
-        radius: 50,
-        color: '#22c55e',
-        fillColor: '#22c55e',
-        fillOpacity: 0.3
-    }).addTo(map);
-    if (followBus) map.panTo([lat, lng]);
-    trackStatus.innerText = `Live: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-    computeAndShowETA();
+
+    currentListeningBus = busId;
+
+    // Firestore real-time listener
+    const locDocRef = db.collection("busesLocations").doc(busId)
+                         .collection("location").doc("current");
+
+    currentUnsubscribe = locDocRef.onSnapshot((doc) => {
+        if (!doc.exists) {
+            trackStatus.innerText = "No live location shared currently";
+            return;
+        }
+
+        const coords = doc.data();
+        const lat = coords.lat;
+        const lng = coords.lng;
+
+        busMarker.setLatLng([lat, lng], { animate: true, duration: 1.5 });
+
+        if (window.busPulseCircle) map.removeLayer(window.busPulseCircle);
+        window.busPulseCircle = L.circle([lat, lng], {
+            radius: 50,
+            color: '#22c55e',
+            fillColor: '#22c55e',
+            fillOpacity: 0.3
+        }).addTo(map);
+
+        if (followBus) map.panTo([lat, lng]);
+        trackStatus.innerText = `Live: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        computeAndShowETA();
+    });
+
+    // ---------------- PWEasy Listener ----------------
+    trackBus(busId, (lat, lng) => {
+        busMarker.setLatLng([lat, lng], { animate: true, duration: 1.5 });
+
+        if (window.busPulseCircle) map.removeLayer(window.busPulseCircle);
+        window.busPulseCircle = L.circle([lat, lng], {
+            radius: 50,
+            color: '#22c55e',
+            fillColor: '#22c55e',
+            fillOpacity: 0.3
+        }).addTo(map);
+
+        if (followBus) map.panTo([lat, lng]);
+        trackStatus.innerText = `Live (PWEasy): ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        computeAndShowETA();
     });
 }
+
+
 
 const avgSpeedKmh = 30;
 function computeAndShowETA(){
@@ -479,3 +564,11 @@ window.addEventListener("beforeunload", () => {
     stopScanner();
     stopSharing();
 });
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then((reg) => console.log("Service Worker registered:", reg.scope))
+      .catch((err) => console.log("Service Worker registration failed:", err));
+  });
+}
