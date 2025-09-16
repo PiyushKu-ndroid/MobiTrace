@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>MobiTrace — Demo</title>
+  
 
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
@@ -11,6 +12,10 @@
 
   <!-- App styles -->
   <link rel="stylesheet" href="style.css" />
+
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#22c55e">
+
 </head>
 <body>
   <!-- Splash -->
@@ -146,9 +151,12 @@
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://unpkg.com/pweasy/dist/pweasy.min.js"></script>
+
 
   <!-- App logic -->
   <script src="app.js"></script>
+  <script src="pweasy.js"></script>
 </body>
 </html>
