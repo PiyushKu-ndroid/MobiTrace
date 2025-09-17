@@ -3,7 +3,6 @@ const urlsToCache = [
   "/",
   "/index.html",
   "/app.js",
-  "/pweasy.js",
   "/style.css",
   "/bus-icon (192).png",
   "/bus-icon (512).png"
@@ -27,4 +26,5 @@ self.addEventListener("fetch", (event) => {
     caches.match(event.request).then((response) => response || fetch(event.request))
   );
 });
+
 
