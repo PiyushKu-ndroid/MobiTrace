@@ -1,9 +1,8 @@
 /* ================================================================
-    Rural Bus Tracker - demo app.js
-    - Corrected to fix splash screen looping and improve timing
+   MobiTrace - app.js (WebRTC + Firestore + PWA)
 ================================================================ */
 
-/* ----------------- FIREBASE CONFIG - REPLACE THIS ----------------- */
+// ---------------- FIREBASE CONFIG ----------------
 const firebaseConfig = {
     apiKey: "AIzaSyAq5XKTrM8R083UyzCTeHoTtNZNnGn_3oM",
     authDomain: "mobitrace-893c6.firebaseapp.com",
@@ -17,17 +16,16 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 db.enablePersistence().catch(err => console.log("Persistence error", err));
-/* ----------------------------------------------------------------- */
 
-/* Basic app state */
+/* ---------------- BASIC APP STATE ---------------- */
 let videoStream = null;
 let scanning = false;
 let scanInterval = null;
 let watchId = null;
 let simulateInterval = null;
-let lastCreatedBusId = null; // global variable
+let lastCreatedBusId = null; 
 
-/* UI elements */
+/* ---------------- UI ELEMENTS ---------------- */
 const splash = document.getElementById("splash");
 const app = document.getElementById("app");
 const navBtns = document.querySelectorAll(".nav-btn");
@@ -37,10 +35,9 @@ const views = {
     driver: document.getElementById("driverView"),
     track: document.getElementById("trackView")
 };
-
 const driverStatusDiv = document.getElementById("driverStatus");
 
-/* NAV helpers */
+/* ---------------- NAV HELPERS ---------------- */
 function showView(name){
     navBtns.forEach(b => b.classList.remove("active"));
     document.getElementById("btnHome").classList.toggle("active", name==="home");
@@ -51,17 +48,14 @@ function showView(name){
     views[name].classList.remove("hidden");
 }
 
-/* Splash -> App: ALL STARTUP LOGIC CONSOLIDATED HERE */
+/* ---------------- STARTUP LOGIC ---------------- */
 window.addEventListener("load", () => {
     try {
-        // Handle URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const viewName = urlParams.get('view');
         const busIdFromUrl = urlParams.get('busId');
 
-        // Delay to allow smooth transition
         setTimeout(() => {
-            // Always hide splash even if something breaks
             splash.classList.add("hidden");
             app.classList.remove("hidden");
 
@@ -77,34 +71,29 @@ window.addEventListener("load", () => {
                 showView("home");
             }
 
-            // Fix map resize issue on mobile
-            setTimeout(() => {
-                if (window.myMap) window.myMap.invalidateSize();
-            }, 500);
-
+            if (window.myMap) window.myMap.invalidateSize();
         }, 500);
 
     } catch (err) {
         console.error("Error during load:", err);
-        // Make sure splash always hides
         splash.classList.add("hidden");
         app.classList.remove("hidden");
     }
 });
 
-
-/* header buttons */
+/* ---------------- HEADER BUTTONS ---------------- */
 document.getElementById("btnHome").addEventListener("click", () => showView("home"));
 document.getElementById("btnAdmin").addEventListener("click", () => showView("admin"));
 document.getElementById("btnDriver").addEventListener("click", () => showView("driver"));
 document.getElementById("btnTrack").addEventListener("click", () => showView("track"));
 
-/* Home quick buttons */
 document.getElementById("gotoDriver").addEventListener("click", () => showView("driver"));
 document.getElementById("gotoTrack").addEventListener("click", () => showView("track"));
 document.getElementById("gotoAdmin").addEventListener("click", () => showView("admin"));
 
-/* ----------------- ADMIN: create bus and QR ----------------- */
+/* ===============================================================
+   ADMIN: CREATE BUS & QR
+================================================================ */
 const createBusBtn = document.getElementById("createBusBtn");
 const adminBusIdInput = document.getElementById("adminBusId");
 const adminBusNameInput = document.getElementById("adminBusName");
@@ -117,8 +106,8 @@ createBusBtn.addEventListener("click", async () => {
     const id = (adminBusIdInput.value || "").trim();
     const name = (adminBusNameInput.value || "").trim();
     if (!id) return alert("Please enter a unique Bus ID (e.g. bus12)");
-    
-    const baseUrl = "https://mobi-trace.vercel.app/"; 
+
+    const baseUrl = "https://mobi-trace.vercel.app/";
     const qrCodeUrl = `${baseUrl}?view=driver&busId=${encodeURIComponent(id)}`;
 
     await db.collection("busesMeta").doc(id).set({
@@ -130,16 +119,13 @@ createBusBtn.addEventListener("click", async () => {
     new QRCode(qrcodeDiv, { text: qrCodeUrl, width: 160, height: 160 });
     qrcodeLabel.innerText = `QR for bus id: ${id}`;
 
-    lastCreatedBusId = id;  // save for download button ✅
-
+    lastCreatedBusId = id;
     adminBusIdInput.value = "";
     adminBusNameInput.value = "";
     refreshBuses();
 });
 
-// After QR generated
-const downloadBtn = document.getElementById("downloadQR");
-downloadBtn.onclick = () => {
+document.getElementById("downloadQR").onclick = () => {
     const canvas = qrcodeDiv.querySelector("canvas");
     if (!canvas) return alert("QR not ready yet.");
     if (!lastCreatedBusId) return alert("No QR generated yet.");
@@ -150,46 +136,38 @@ downloadBtn.onclick = () => {
     link.click();
 };
 
-
 refreshBusesBtn.addEventListener("click", refreshBuses);
 
 async function refreshBuses() {
     adminBusList.innerHTML = "<li class='muted'>Loading…</li>";
-
     const snapshot = await db.collection("busesMeta").get();
     adminBusList.innerHTML = "";
-
     snapshot.forEach(doc => {
         const data = doc.data();
         const li = document.createElement("li");
         li.innerText = `${doc.id} — ${data.name || ""}`;
         adminBusList.appendChild(li);
     });
-
     populateBusSelect();
 }
 
-/* ----------------- ADMIN: Pin route on map ----------------- */
+/* ---------------- ADMIN MAP ---------------- */
 let adminMap, adminMarkers = [], adminRouteControl = null;
 
 function initAdminMap(){
     if (adminMap) return;
-
-    adminMap = L.map('adminMap').setView([22.5795, 88.3720], 13); // Adjust default view
+    adminMap = L.map('adminMap').setView([22.5795, 88.3720], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors'
     }).addTo(adminMap);
 
     adminMap.on('click', async (e) => {
-        if (adminMarkers.length >= 2) return; // Only two points allowed
+        if (adminMarkers.length >= 2) return;
         const marker = L.marker(e.latlng, { draggable: true }).addTo(adminMap);
         adminMarkers.push(marker);
+        marker.on('dragend', drawAdminRoute);
 
-        marker.on('dragend', () => drawAdminRoute());
-
-        if (adminMarkers.length === 2) {
-            drawAdminRoute();
-        }
+        if (adminMarkers.length === 2) drawAdminRoute();
     });
 
     document.getElementById("resetRouteBtn").addEventListener("click", () => {
@@ -204,6 +182,7 @@ function drawAdminRoute(){
     if (adminRouteControl) adminMap.removeControl(adminRouteControl);
     if (adminMarkers.length < 2) return;
 
+    // Draw the route
     adminRouteControl = L.Routing.control({
         waypoints: adminMarkers.map(m => m.getLatLng()),
         routeWhileDragging: true
@@ -215,16 +194,28 @@ function drawAdminRoute(){
         return { lat: ll.lat, lng: ll.lng };
     });
     console.log("Admin Route Coordinates:", routeCoords);
-    // You can save like:
-    // db.ref("busesRoutes/" + busId).set(routeCoords);
+
+    // ----------------- AUTO FILL DISPLAY NAME -----------------
+    const start = routeCoords[0];
+    const end = routeCoords[1];
+
+    // Simple readable format
+    const displayName = `Route: (${start.lat.toFixed(3)}, ${start.lng.toFixed(3)}) → (${end.lat.toFixed(3)}, ${end.lng.toFixed(3)})`;
+
+    // Auto fill input
+    adminBusNameInput.value = displayName;
+
+    // Optional: If you want, you can also save the route in Firestore
+    // db.collection("busesRoutes").doc(lastCreatedBusId || "temp").set(routeCoords);
 }
 
-/* Initialize admin map when admin view is loaded */
+
 document.getElementById("btnAdmin").addEventListener("click", initAdminMap);
 document.getElementById("gotoAdmin").addEventListener("click", initAdminMap);
 
-
-/* ----------------- DRIVER: start/stop sharing ----------------- */
+/* ===============================================================
+   DRIVER: START / STOP SHARING (WebRTC + Firestore + Simulation)
+================================================================ */
 const video = document.getElementById("video");
 const startShareBtn = document.getElementById("startShareBtn");
 const stopShareBtn = document.getElementById("stopShareBtn");
@@ -232,28 +223,80 @@ const simulateRouteSelect = document.getElementById("simulateRouteSelect");
 const driverBusIdInput = document.getElementById("driverBusId");
 const busDatalist = document.getElementById("busIdOptions");
 
-
-
-
 /* Load bus IDs into datalist */
 async function loadBusOptions() {
     try{
-  const snapshot = await db.collection("busesMeta").get();
-  busDatalist.innerHTML = ""; // clear old list
-
-  snapshot.forEach(doc => {
-    const bus = doc.data();
-    const opt = document.createElement("option");
-    opt.value = doc.id; // bus ID
-    busDatalist.appendChild(opt);
-  });
-}catch(err){
-      console.error("Error loading bus options:", err);
-}
+        const snapshot = await db.collection("busesMeta").get();
+        busDatalist.innerHTML = "";
+        snapshot.forEach(doc => {
+            const opt = document.createElement("option");
+            opt.value = doc.id;
+            busDatalist.appendChild(opt);
+        });
+    }catch(err){
+        console.error("Error loading bus options:", err);
+    }
 }
 
+/* ---------------- DRIVER: WebRTC ---------------- */
+let driverPeerConnection = null;
+let driverDataChannel = null;
 
-/* DRIVER: start / stop sharing (real gps or simulated route) */
+async function initDriverWebRTC(busId) {
+    if (!busId) return console.warn("Bus ID required for WebRTC driver");
+
+    driverPeerConnection = new RTCPeerConnection();
+    driverDataChannel = driverPeerConnection.createDataChannel("busLocation");
+    driverDataChannel.onopen = () => console.log("Driver DataChannel open");
+    driverDataChannel.onclose = () => console.log("Driver DataChannel closed");
+
+    driverPeerConnection.onicecandidate = async (event) => {
+        if (event.candidate) {
+            await db.collection("webrtcSignals").doc(busId)
+                .collection("candidates").add(event.candidate.toJSON());
+        }
+    };
+
+    const offer = await driverPeerConnection.createOffer();
+    await driverPeerConnection.setLocalDescription(offer);
+
+    await db.collection("webrtcSignals").doc(busId).set({
+        type: "offer",
+        sdp: offer.sdp
+    });
+
+    db.collection("webrtcSignals").doc(busId).onSnapshot(async (snap) => {
+        const data = snap.data();
+        if (!data) return;
+        if (data.type === "answer") {
+            const answer = new RTCSessionDescription({ type: "answer", sdp: data.sdp });
+            await driverPeerConnection.setRemoteDescription(answer);
+            console.log("Driver set remote description (answer) from tracker");
+        }
+    });
+
+    db.collection("webrtcSignals").doc(busId)
+        .collection("candidates_tracker")
+        .onSnapshot((snap) => {
+            snap.docChanges().forEach(async (change) => {
+                if (change.type === "added") {
+                    try {
+                        await driverPeerConnection.addIceCandidate(change.doc.data());
+                    } catch (err) {
+                        console.error("Error adding ICE candidate:", err);
+                    }
+                }
+            });
+        });
+}
+
+function sendDriverLocationWebRTC(lat, lng) {
+    if (driverDataChannel && driverDataChannel.readyState === "open") {
+        driverDataChannel.send(JSON.stringify({ lat, lng, ts: Date.now() }));
+    }
+}
+
+/* ---------------- DRIVER: START / STOP ---------------- */
 startShareBtn.addEventListener("click", startSharing);
 stopShareBtn.addEventListener("click", stopSharing);
 
@@ -261,10 +304,9 @@ async function startSharing(){
     const busId = (driverBusIdInput.value || "").trim();
     if (!busId) return alert("Please scan QR or enter Bus ID first.");
 
-    // Initialize PWEasy for this driver
-    initDriverPWEasy(busId);
+    // Initialize WebRTC driver
+    await initDriverWebRTC(busId);
 
-    // Firestore meta update
     await db.collection("busesLocations").doc(busId)
         .set({ sharing: true, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
 
@@ -287,13 +329,11 @@ async function startSharing(){
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
 
-        // Firestore update
         db.collection("busesLocations").doc(busId)
             .collection("location").doc("current")
             .set({ lat, lng, ts: firebase.firestore.FieldValue.serverTimestamp() });
 
-        // PWEasy instant broadcast
-        sendDriverLocation(busId, lat, lng);
+        sendDriverLocationWebRTC(lat, lng);
 
         driverStatusDiv.innerText = `Status: sharing (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
     }, (err) => {
@@ -304,8 +344,6 @@ async function startSharing(){
     startShareBtn.disabled = true;
     stopShareBtn.disabled = false;
 }
-
-
 
 function stopSharing() {
     const busId = (driverBusIdInput.value || "").trim();
@@ -334,7 +372,6 @@ function stopSharing() {
     stopShareBtn.disabled = true;
 }
 
-
 function startSimulateRoute(busId) {
     const route = [
         [22.5726, 88.3639],
@@ -355,18 +392,17 @@ function startSimulateRoute(busId) {
     simulateInterval = setInterval(() => {
         const [lat, lng] = route[i];
         db.collection("busesLocations").doc(busId).collection("location").doc("current").set({
-            lat, 
-            lng, 
-            ts: firebase.firestore.FieldValue.serverTimestamp()
+            lat, lng, ts: firebase.firestore.FieldValue.serverTimestamp()
         });
+        sendDriverLocationWebRTC(lat, lng);
         i++;
         if (i >= route.length) i = 0;
     }, 1800);
 }
-/* Load buses on startup */
-loadBusOptions();
 
-/* ----------------- TRACK: Passenger UI & Live Map ----------------- */
+/* ===============================================================
+   TRACKER MAP + LISTEN LIVE BUS (WebRTC)
+================================================================ */
 let map, busMarker, userStopMarker;
 let followBus = true;
 const busSelect = document.getElementById("busSelect");
@@ -375,22 +411,78 @@ const setStopBtn = document.getElementById("setStopBtn");
 const etaBox = document.getElementById("etaBox");
 const trackStatus = document.getElementById("trackStatus");
 
+let selectingStop = false;
 followCheckbox.addEventListener("change", () => followBus = followCheckbox.checked);
 setStopBtn.addEventListener("click", () => toggleSetStopMode());
 
-let selectingStop = false;
 function toggleSetStopMode(){
     selectingStop = !selectingStop;
     setStopBtn.innerText = selectingStop ? "Click map to pick stop (Cancel)" : "Enable Set Stop";
-    if (selectingStop) {
-        trackStatus.innerText = "Click on the map to set your stop";
-    } else {
-        trackStatus.innerText = "Mode: normal";
-    }
+    trackStatus.innerText = selectingStop ? "Click on the map to set your stop" : "Mode: normal";
 }
 
+/* ---------------- TRACKER: WebRTC LISTENER ---------------- */
+let trackerPeerConnection = null;
+
+async function startListeningBusWebRTC(busId) {
+    trackerPeerConnection = new RTCPeerConnection();
+
+    trackerPeerConnection.ondatachannel = (event) => {
+        const channel = event.channel;
+        channel.onmessage = (e) => {
+            const data = JSON.parse(e.data);
+            if (busMarker) {
+                busMarker.setLatLng([data.lat, data.lng]);
+                if (window.busPulseCircle) map.removeLayer(window.busPulseCircle);
+                window.busPulseCircle = L.circle([data.lat, data.lng], {
+                    radius: 50, color: '#22c55e', fillColor: '#22c55e', fillOpacity: 0.3
+                }).addTo(map);
+                if (followBus) map.panTo([data.lat, data.lng]);
+                trackStatus.innerText = `Live (WebRTC): ${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}`;
+                computeAndShowETA();
+            }
+        };
+    };
+
+    trackerPeerConnection.onicecandidate = async (event) => {
+        if (event.candidate) {
+            await db.collection("webrtcSignals").doc(busId)
+                .collection("candidates_tracker").add(event.candidate.toJSON());
+        }
+    };
+
+    const snap = await db.collection("webrtcSignals").doc(busId).get();
+    const offerData = snap.data();
+    if (!offerData || offerData.type !== "offer") return;
+
+    await trackerPeerConnection.setRemoteDescription(new RTCSessionDescription({ type: "offer", sdp: offerData.sdp }));
+
+    const answer = await trackerPeerConnection.createAnswer();
+    await trackerPeerConnection.setLocalDescription(answer);
+
+    await db.collection("webrtcSignals").doc(busId).update({
+        type: "answer",
+        sdp: answer.sdp
+    });
+
+    db.collection("webrtcSignals").doc(busId)
+        .collection("candidates").onSnapshot((snap) => {
+            snap.docChanges().forEach(async (change) => {
+                if (change.type === "added") {
+                    try {
+                        await trackerPeerConnection.addIceCandidate(change.doc.data());
+                    } catch (err) {
+                        console.error("Error adding ICE candidate (tracker):", err);
+                    }
+                }
+            });
+        });
+}
+
+/* ---------------- TRACKER MAP INIT ---------------- */
 function initMap(){
     if (map) return;
+
     map = L.map('map').setView([22.5795, 88.3720], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors'
@@ -399,6 +491,7 @@ function initMap(){
     busMarker = L.marker([22.5726, 88.3639], {
         icon: L.divIcon({ html: "🚌", className:"", iconSize:[28,28] })
     }).addTo(map);
+
     map.on('click', (e) => {
         if (!selectingStop) return;
         if (userStopMarker) map.removeLayer(userStopMarker);
@@ -408,15 +501,18 @@ function initMap(){
         trackStatus.innerText = "Stop set. Waiting for bus...";
         computeAndShowETA();
     });
+
     populateBusSelect();
 }
 
+/* ---------------- TRACKER BUS SELECTION ---------------- */
+let currentListeningBus = null;
+let currentUnsubscribe = null;
+
 async function populateBusSelect() {
     busSelect.innerHTML = "<option>Loading…</option>";
-
     const snapshot = await db.collection("busesMeta").get();
     busSelect.innerHTML = "";
-
     const defaultOpt = document.createElement("option");
     defaultOpt.value = "";
     defaultOpt.innerText = snapshot.empty ? "No buses available" : "Select bus to track";
@@ -431,78 +527,16 @@ async function populateBusSelect() {
     });
 }
 
-
 busSelect.addEventListener("change", (e) => {
     const id = e.target.value;
     if (!id) return;
     trackStatus.innerText = `Tracking ${id}…`;
-    startListeningBus(id);
+    startListeningBusWebRTC(id);
 });
 
-let currentListeningBus = null;
-let currentUnsubscribe = null;
-
-function startListeningBus(busId) {
-    if (!busId) return;
-
-    // Stop previous Firestore listener
-    if (currentUnsubscribe) {
-        currentUnsubscribe();
-        currentUnsubscribe = null;
-    }
-
-    currentListeningBus = busId;
-
-    // Firestore real-time listener
-    const locDocRef = db.collection("busesLocations").doc(busId)
-                         .collection("location").doc("current");
-
-    currentUnsubscribe = locDocRef.onSnapshot((doc) => {
-        if (!doc.exists) {
-            trackStatus.innerText = "No live location shared currently";
-            return;
-        }
-
-        const coords = doc.data();
-        const lat = coords.lat;
-        const lng = coords.lng;
-
-        busMarker.setLatLng([lat, lng], { animate: true, duration: 1.5 });
-
-        if (window.busPulseCircle) map.removeLayer(window.busPulseCircle);
-        window.busPulseCircle = L.circle([lat, lng], {
-            radius: 50,
-            color: '#22c55e',
-            fillColor: '#22c55e',
-            fillOpacity: 0.3
-        }).addTo(map);
-
-        if (followBus) map.panTo([lat, lng]);
-        trackStatus.innerText = `Live: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-        computeAndShowETA();
-    });
-
-    // ---------------- PWEasy Listener ----------------
-    trackBus(busId, (lat, lng) => {
-        busMarker.setLatLng([lat, lng], { animate: true, duration: 1.5 });
-
-        if (window.busPulseCircle) map.removeLayer(window.busPulseCircle);
-        window.busPulseCircle = L.circle([lat, lng], {
-            radius: 50,
-            color: '#22c55e',
-            fillColor: '#22c55e',
-            fillOpacity: 0.3
-        }).addTo(map);
-
-        if (followBus) map.panTo([lat, lng]);
-        trackStatus.innerText = `Live (PWEasy): ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-        computeAndShowETA();
-    });
-}
-
-
-
+/* ---------------- ETA CALC ---------------- */
 const avgSpeedKmh = 30;
+
 function computeAndShowETA(){
     if (!currentListeningBus) {
         etaBox.innerText = "ETA: select a bus";
@@ -529,20 +563,21 @@ function haversineDistance(a,b){
     return R*c;
 }
 
+/* ---------------- INIT ---------------- */
 document.getElementById("btnTrack").addEventListener("click", initMap);
 document.getElementById("gotoTrack").addEventListener("click", initMap);
 
+loadBusOptions();
 refreshBuses();
 
 window.addEventListener("beforeunload", () => {
-    stopScanner();
     stopSharing();
 });
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then((reg) => console.log("Service Worker registered:", reg.scope))
-      .catch((err) => console.log("Service Worker registration failed:", err));
-  });
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+            .then((reg) => console.log("Service Worker registered:", reg.scope))
+            .catch((err) => console.log("Service Worker registration failed:", err));
+    });
 }
