@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>MobiTrace — Demo</title>
-  
+
 
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
@@ -17,6 +18,7 @@
   <meta name="theme-color" content="#22c55e">
 
 </head>
+
 <body>
   <!-- Splash -->
   <div id="splash">
@@ -42,12 +44,13 @@
       <!-- Home -->
       <section id="homeView" class="view">
         <h2>Welcome! choose a role</h2>
-        <div class="bigButtons" >
+        <div class="bigButtons">
           <button class="big" id="gotoDriver">Driver</button>
           <button class="big" id="gotoTrack">Track (Passenger)</button>
           <button class="big" id="gotoAdmin">Admin</button>
         </div>
-        <p class="muted">Demo: Admin creates a bus and QR. Driver scans QR and starts sharing location. Passenger tracks live on map.</p>
+        <p class="muted">Demo: Admin creates a bus and QR. Driver scans QR and starts sharing location. Passenger tracks
+          live on map.</p>
       </section>
 
       <!-- Admin -->
@@ -70,7 +73,7 @@
           <div id="qrcode" style="padding:8px;border-radius:8px;"></div>
           <div id="qrcodeLabel" class="muted" style="margin-top:8px"></div>
           <button id="downloadQR">Download QR</button>
-        </div> 
+        </div>
 
         <div class="card">
           <h3>Existing buses in project</h3>
@@ -89,15 +92,13 @@
 
       <!-- Driver -->
       <section id="driverView" class="view hidden">
-        <h2>Driver — Scan QR or enter Bus ID</h2>
+        <h2>Driver — Enter Bus ID</h2>
         <div class="card row">
           <div>
             <label>Bus ID</label>
-            <input id="driverBusId" placeholder="Scan QR or enter bus id">
-            <div style="margin-top:8px;">
-              <button id="startScanBtn">Scan QR (Camera)</button>
-              <button id="stopScanBtn" disabled>Stop Scan</button>
-            </div>
+            <input list="busIdOptions" id="driverBusId" placeholder="Type or select bus id">
+            <datalist id="busIdOptions"></datalist>
+
           </div>
           <div>
             <label>Simulate (desktop)</label>
@@ -151,7 +152,7 @@
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="https://unpkg.com/pweasy/dist/pweasy.min.js"></script>
 
 
@@ -159,4 +160,5 @@
   <script src="app.js"></script>
   <script src="pweasy.js"></script>
 </body>
+
 </html>
