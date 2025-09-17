@@ -37,7 +37,7 @@ const views = {
     driver: document.getElementById("driverView"),
     track: document.getElementById("trackView")
 };
-const driverBusIdInput = document.getElementById("driverBusId");
+
 const driverStatusDiv = document.getElementById("driverStatus");
 
 /* NAV helpers */
@@ -224,62 +224,34 @@ document.getElementById("btnAdmin").addEventListener("click", initAdminMap);
 document.getElementById("gotoAdmin").addEventListener("click", initAdminMap);
 
 
-/* ----------------- DRIVER: QR scan + start/stop sharing ----------------- */
-const startScanBtn = document.getElementById("startScanBtn");
-const stopScanBtn = document.getElementById("stopScanBtn");
+/* ----------------- DRIVER: start/stop sharing ----------------- */
 const video = document.getElementById("video");
-const qrCanvas = document.getElementById("qrCanvas");
 const startShareBtn = document.getElementById("startShareBtn");
 const stopShareBtn = document.getElementById("stopShareBtn");
 const simulateRouteSelect = document.getElementById("simulateRouteSelect");
+const driverBusIdInput = document.getElementById("driverBusId");
+const busDatalist = document.getElementById("busIdOptions");
 
-startScanBtn.addEventListener("click", startScanner);
-stopScanBtn.addEventListener("click", stopScanner);
 
-async function startScanner(){
-    if (scanning) return;
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-        video.srcObject = stream;
-        video.play();
-        video.style.display = "block";
-        videoStream = stream;
-        scanning = true;
-        startScanBtn.disabled = true;
-        stopScanBtn.disabled = false;
-        driverStatusDiv.innerText = "Status: Scanning QR… point camera at code";
-        const ctxCanvas = qrCanvas.getContext("2d");
-        qrCanvas.width = 400;
-        qrCanvas.height = 300;
-        scanInterval = setInterval(() => {
-            try {
-                ctxCanvas.drawImage(video, 0,0, qrCanvas.width, qrCanvas.height);
-                const imageData = ctxCanvas.getImageData(0,0, qrCanvas.width, qrCanvas.height);
-                const code = jsQR(imageData.data, imageData.width, imageData.height);
-                if (code) {
-                    stopScanner();
-                    driverBusIdInput.value = code.data;
-                    driverStatusDiv.innerText = `Status: Scanned bus id "${code.data}"`;
-                }
-            } catch(err){}
-        }, 250);
-    } catch (err) {
-        alert("Camera access failed. You can enter bus id manually.");
-        console.error(err);
-    }
+
+
+/* Load bus IDs into datalist */
+async function loadBusOptions() {
+    try{
+  const snapshot = await db.collection("busesMeta").get();
+  busDatalist.innerHTML = ""; // clear old list
+
+  snapshot.forEach(doc => {
+    const bus = doc.data();
+    const opt = document.createElement("option");
+    opt.value = doc.id; // bus ID
+    busDatalist.appendChild(opt);
+  });
+}catch(err){
+      console.error("Error loading bus options:", err);
+}
 }
 
-function stopScanner(){
-    scanning = false;
-    startScanBtn.disabled = false;
-    stopScanBtn.disabled = true;
-    driverStatusDiv.innerText = "Status: Scanner stopped";
-    if (videoStream) {
-        videoStream.getTracks().forEach(t=>t.stop());
-        video.srcObject = null;
-    }
-    if (scanInterval) clearInterval(scanInterval);
-}
 
 /* DRIVER: start / stop sharing (real gps or simulated route) */
 startShareBtn.addEventListener("click", startSharing);
@@ -391,6 +363,8 @@ function startSimulateRoute(busId) {
         if (i >= route.length) i = 0;
     }, 1800);
 }
+/* Load buses on startup */
+loadBusOptions();
 
 /* ----------------- TRACK: Passenger UI & Live Map ----------------- */
 let map, busMarker, userStopMarker;
