@@ -537,31 +537,90 @@ busSelect.addEventListener("change", (e) => {
 /* ---------------- ETA CALC ---------------- */
 const avgSpeedKmh = 30;
 
-function computeAndShowETA(){
+function computeAndShowETA() {
     if (!currentListeningBus) {
         etaBox.innerText = "ETA: select a bus";
+        return;
+    }
+    if (!busMarker) {
+        etaBox.innerText = "ETA: waiting for bus location...";
         return;
     }
     if (!userStopMarker) {
         etaBox.innerText = "ETA: set your stop (click Set Stop)";
         return;
     }
+
     const busLatLng = busMarker.getLatLng();
     const userLatLng = userStopMarker.getLatLng();
-    const distKm = haversineDistance([busLatLng.lat, busLatLng.lng], [userLatLng.lat, userLatLng.lng]);
+    const distKm = haversineDistance(
+        [busLatLng.lat, busLatLng.lng],
+        [userLatLng.lat, userLatLng.lng]
+    );
+
     const minutes = Math.round((distKm / avgSpeedKmh) * 60);
     etaBox.innerText = `ETA: ~ ${minutes} min (${distKm.toFixed(2)} km)`;
 }
 
-function haversineDistance(a,b){
+function haversineDistance(a, b) {
     const R = 6371;
-    const lat1 = a[0]*Math.PI/180; const lon1 = a[1]*Math.PI/180;
-    const lat2 = b[0]*Math.PI/180; const lon2 = b[1]*Math.PI/180;
-    const dlat = lat2-lat1; const dlon = lon2-lon1;
-    const aa = Math.sin(dlat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dlon/2)**2;
-    const c = 2*Math.atan2(Math.sqrt(aa), Math.sqrt(1-aa));
-    return R*c;
+    const lat1 = a[0] * Math.PI / 180, lon1 = a[1] * Math.PI / 180;
+    const lat2 = b[0] * Math.PI / 180, lon2 = b[1] * Math.PI / 180;
+    const dlat = lat2 - lat1, dlon = lon2 - lon1;
+    const aa = Math.sin(dlat / 2) ** 2 +
+        Math.cos(lat1) * Math.cos(lat2) * Math.sin(dlon / 2) ** 2;
+    const c = 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1 - aa));
+    return R * c;
 }
+
+// ------------------- EVENT HANDLERS -------------------
+
+// When passenger selects a bus
+busSelect.addEventListener("change", (e) => {
+    const busId = e.target.value;
+    if (busId) {
+        currentListeningBus = busId;
+        trackStatus.innerText = `Tracking bus: ${busId}`;
+        computeAndShowETA();
+    } else {
+        currentListeningBus = null;
+        trackStatus.innerText = "No bus selected";
+        etaBox.innerText = "ETA: select a bus";
+    }
+});
+
+// Checkbox toggle
+followCheckbox.addEventListener("change", () => {
+    followBus = followCheckbox.checked;
+});
+
+// Stop setting (when passenger marks stop)
+setStopBtn.addEventListener("click", () => {
+    if (!map) return;
+    map.once("click", (e) => {
+        if (userStopMarker) {
+            map.removeLayer(userStopMarker);
+        }
+        userStopMarker = L.marker(e.latlng).addTo(map);
+        computeAndShowETA();
+    });
+});
+
+// ------------------- BUS LOCATION UPDATES -------------------
+// Call this whenever bus location is updated
+function updateBusLocation(lat, lng) {
+    if (!busMarker) {
+        busMarker = L.marker([lat, lng], { icon: L.icon({ iconUrl: "bus.png", iconSize: [32, 32] }) })
+            .addTo(map);
+    } else {
+        busMarker.setLatLng([lat, lng]);
+    }
+    if (followBus) {
+        map.setView([lat, lng], map.getZoom());
+    }
+    computeAndShowETA();
+}
+
 
 /* ---------------- INIT ---------------- */
 document.getElementById("btnTrack").addEventListener("click", initMap);
@@ -581,3 +640,4 @@ if ('serviceWorker' in navigator) {
             .catch((err) => console.log("Service Worker registration failed:", err));
     });
 }
+
